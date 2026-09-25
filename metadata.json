@@ -1,0 +1,6 @@
+{
+  "name": "Explainable AI Student Performance Prediction System",
+  "description": "An Explainable AI platform predicting student performance and academic risk with SHAP and LIME interpretations, early intervention recommendations, and faculty analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
