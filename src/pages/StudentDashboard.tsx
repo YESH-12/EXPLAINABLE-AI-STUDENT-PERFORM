@@ -22,7 +22,8 @@ import {
   Calendar,
   Layers,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Trash2
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -107,6 +108,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         await fetch(`/api/recommendations/${student.id}/${recId}/toggle`, { method: 'PUT' });
       } catch (err) {
         console.error('Toggle error:', err);
+      }
+    }
+  };
+
+  const deleteRecommendation = async (e: React.MouseEvent, recId: string) => {
+    e.stopPropagation();
+    setRecommendations(prev => prev.filter(r => r.id !== recId));
+    if (student) {
+      try {
+        await fetch(`/api/recommendations/${encodeURIComponent(student.id)}/${encodeURIComponent(recId)}`, {
+          method: 'DELETE',
+        });
+      } catch (err) {
+        console.error('Delete rec error:', err);
       }
     }
   };
@@ -387,6 +402,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     Reason: {rec.reason}
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => deleteRecommendation(e, rec.id)}
+                  title="Delete Recommendation"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             );
           })}

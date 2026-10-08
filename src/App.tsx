@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Role, Student } from './types/index';
+import { User, Student, AiStudentBrief } from './types/index';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { PrivacyNoticeModal } from './components/PrivacyNoticeModal';
@@ -28,6 +28,7 @@ export default function App() {
 
   const [currentTab, setCurrentTab] = useState<string>('faculty-dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedAiBrief, setSelectedAiBrief] = useState<AiStudentBrief | null>(null);
   const [selectedStudentForPredictor, setSelectedStudentForPredictor] = useState<Student | null>(null);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,7 +59,12 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('auth_token');
-    setCurrentTab('landing');
+    setCurrentTab('login');
+  };
+
+  const handleOpenAuthPortal = () => {
+    setUser(null);
+    setCurrentTab('login');
   };
 
   const handleSwitchUser = async (email: string) => {
@@ -85,8 +91,9 @@ export default function App() {
     }
   };
 
-  const navigateToStudentDetails = (studentId: string) => {
+  const navigateToStudentDetails = (studentId: string, aiBrief?: AiStudentBrief) => {
     setSelectedStudentId(studentId);
+    setSelectedAiBrief(aiBrief || null);
     setCurrentTab('student-details');
   };
 
@@ -131,6 +138,8 @@ export default function App() {
         onOpenPrivacy={() => setIsPrivacyOpen(true)}
         onSwitchUser={handleSwitchUser}
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onSelectStudentWithAi={navigateToStudentDetails}
+        onOpenAuthPortal={handleOpenAuthPortal}
       />
 
       <div className="flex-1 flex">
@@ -139,7 +148,10 @@ export default function App() {
           currentTab={currentTab}
           setCurrentTab={(tab) => {
             setCurrentTab(tab);
-            if (tab !== 'student-details') setSelectedStudentId(null);
+            if (tab !== 'student-details') {
+              setSelectedStudentId(null);
+              setSelectedAiBrief(null);
+            }
           }}
           role={user?.role || 'faculty'}
           isOpen={isSidebarOpen}
@@ -175,7 +187,9 @@ export default function App() {
           {currentTab === 'student-details' && (
             <StudentDetails
               studentId={selectedStudentId || 'STU-CO-2023-0001'}
+              initialAiBrief={selectedAiBrief}
               onBack={() => setCurrentTab(user?.role === 'student' ? 'student-dashboard' : 'students-directory')}
+              onSelectAnotherStudent={navigateToStudentDetails}
               currentUserRole={user?.role}
               currentUserName={user?.name}
             />

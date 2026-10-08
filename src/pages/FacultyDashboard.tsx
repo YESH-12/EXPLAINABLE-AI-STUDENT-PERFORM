@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  AlertTriangle, 
-  GraduationCap, 
-  Activity, 
-  ArrowRight, 
-  Search, 
-  Filter, 
+import {
+  Users,
+  AlertTriangle,
+  GraduationCap,
+  Activity,
+  ArrowRight,
+  Search,
   Sparkles,
   TrendingUp,
-  CheckCircle2,
-  Clock,
   ChevronRight,
-  ShieldCheck
+  Trash2,
 } from 'lucide-react';
-import { Student, DashboardSummary, Intervention } from '../types/index';
+import { Student, DashboardSummary, Intervention, AiStudentBrief } from '../types/index';
 import { RiskBadge } from '../components/RiskBadge';
+import { AiStudentLookup } from '../components/AiStudentLookup';
 
 interface FacultyDashboardProps {
-  onSelectStudent: (studentId: string) => void;
+  onSelectStudent: (studentId: string, aiBrief?: AiStudentBrief) => void;
   onNavigateToDirectory: () => void;
   onNavigateToPredictor: () => void;
   onNavigateToReports: () => void;
@@ -45,7 +43,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
     try {
       const [sumRes, studentsRes, interRes] = await Promise.all([
         fetch('/api/dashboard/summary'),
-        fetch('/api/students?limit=100'),
+        fetch('/api/students?limit=150'),
         fetch('/api/interventions'),
       ]);
 
@@ -56,16 +54,15 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
 
       if (studentsRes.ok) {
         const studData = await studentsRes.json();
-        // High risk watchlist
         const studentsList = studData?.students || [];
         const highRisk = studentsList.filter((s: Student) => s.currentRiskLevel === 'High Risk');
-        setWatchlist(highRisk.slice(0, 8));
+        setWatchlist(highRisk.slice(0, 12));
       }
 
       if (interRes.ok) {
         const interData = await interRes.json();
         const interList = interData?.interventions || [];
-        setRecentInterventions(interList.slice(0, 5));
+        setRecentInterventions(interList.slice(0, 8));
       }
     } catch (err) {
       console.error('Failed to load dashboard:', err);
@@ -74,7 +71,41 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
     }
   };
 
-  const filteredWatchlist = watchlist.filter(s =>
+  const handleDeleteWatchlistStudent = async (id: string) => {
+    try {
+      const res = await fetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) {
+        setWatchlist(prev => prev.filter(s => s.id !== id));
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error('Failed to delete student:', err);
+    }
+  };
+
+  const handleDeleteIntervention = async (id: string) => {
+    try {
+      const res = await fetch(`/api/interventions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setRecentInterventions(prev => prev.filter(i => i.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete intervention:', err);
+    }
+  };
+
+  const handleClearAllInterventions = async () => {
+    try {
+      const res = await fetch('/api/interventions', { method: 'DELETE' });
+      if (res.ok) {
+        setRecentInterventions([]);
+      }
+    } catch (err) {
+      console.error('Failed to clear interventions:', err);
+    }
+  };
+
+  const filteredWatchlist = (watchlist || []).filter(s =>
     s.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.department.toLowerCase().includes(searchQuery.toLowerCase())
@@ -87,26 +118,29 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
         <div>
           <h1 className="text-xl font-bold text-slate-900">Faculty Analytics & Cohort Monitoring</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time machine learning academic predictions and early warning risk indicators
+            Real-time machine learning academic predictions, AI Roll No lookup, and early warning risk indicators
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={onNavigateToPredictor}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>New Prediction & XAI</span>
           </button>
           <button
             onClick={onNavigateToReports}
-            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-xs transition-colors"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             Generate Reports
           </button>
         </div>
       </div>
+
+      {/* AI Direct Student Roll No & Name Lookup */}
+      <AiStudentLookup onSelectStudentWithAi={onSelectStudent} />
 
       {/* Top 4 Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -125,7 +159,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
             <span className="text-xs text-slate-400 font-medium">enrolled</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            Across 6 academic engineering disciplines
+            Real-time runtime database records
           </p>
         </div>
 
@@ -144,7 +178,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
             <span className="text-xs text-slate-400 font-medium">/ 100 max</span>
           </div>
           <p className="text-[11px] text-emerald-700 font-medium mt-2 flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" /> Normal bell-curve distribution
+            <TrendingUp className="w-3.5 h-3.5" /> Live ensemble projection
           </p>
         </div>
 
@@ -161,7 +195,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
               {summary ? summary.highRiskCount : '...'}
             </span>
             <span className="text-xs text-slate-400 font-medium">
-              ({summary ? Math.round((summary.highRiskCount / summary.totalStudents) * 100) : 0}%)
+              ({summary && summary.totalStudents > 0 ? Math.round((summary.highRiskCount / summary.totalStudents) * 100) : 0}%)
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
@@ -188,14 +222,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
         </div>
       </div>
 
-      {/* Cohort Risk Distribution & Department Benchmarks */}
+      {/* Cohort Risk Distribution & Real-Time Department Benchmarks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Risk Distribution Breakdown */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-slate-900">Cohort Risk Distribution</h2>
-              <span className="text-xs text-slate-400">Current Semester</span>
+              <span className="text-xs text-slate-400">Live Runtime</span>
             </div>
 
             {summary && (
@@ -205,13 +239,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-semibold text-emerald-800">Low Risk (&ge;70 pts)</span>
                     <span className="font-bold text-slate-900">
-                      {summary.lowRiskCount} ({Math.round((summary.lowRiskCount / summary.totalStudents) * 100)}%)
+                      {summary.lowRiskCount} ({summary.totalStudents > 0 ? Math.round((summary.lowRiskCount / summary.totalStudents) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-emerald-500 h-full rounded-full"
-                      style={{ width: `${(summary.lowRiskCount / summary.totalStudents) * 100}%` }}
+                      style={{ width: `${summary.totalStudents > 0 ? (summary.lowRiskCount / summary.totalStudents) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
@@ -221,13 +255,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-semibold text-amber-800">Medium Risk (50-69 pts)</span>
                     <span className="font-bold text-slate-900">
-                      {summary.mediumRiskCount} ({Math.round((summary.mediumRiskCount / summary.totalStudents) * 100)}%)
+                      {summary.mediumRiskCount} ({summary.totalStudents > 0 ? Math.round((summary.mediumRiskCount / summary.totalStudents) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-amber-500 h-full rounded-full"
-                      style={{ width: `${(summary.mediumRiskCount / summary.totalStudents) * 100}%` }}
+                      style={{ width: `${summary.totalStudents > 0 ? (summary.mediumRiskCount / summary.totalStudents) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
@@ -237,13 +271,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-semibold text-rose-800">High Risk (&lt;50 pts)</span>
                     <span className="font-bold text-slate-900">
-                      {summary.highRiskCount} ({Math.round((summary.highRiskCount / summary.totalStudents) * 100)}%)
+                      {summary.highRiskCount} ({summary.totalStudents > 0 ? Math.round((summary.highRiskCount / summary.totalStudents) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-rose-500 h-full rounded-full"
-                      style={{ width: `${(summary.highRiskCount / summary.totalStudents) * 100}%` }}
+                      style={{ width: `${summary.totalStudents > 0 ? (summary.highRiskCount / summary.totalStudents) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
@@ -256,18 +290,18 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           </div>
         </div>
 
-        {/* Department Comparison */}
+        {/* Real-Time Department Comparison */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Department Performance Comparison</h2>
-              <p className="text-xs text-slate-500">Average projected scores & high-risk counts across programs</p>
+              <h2 className="text-sm font-bold text-slate-900">Real-Time Department Performance Comparison</h2>
+              <p className="text-xs text-slate-500">Live aggregated projected scores & high-risk counts across programs</p>
             </div>
             <button
               onClick={onNavigateToDirectory}
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              <span>View All</span>
+              <span>Manage Directory</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -284,22 +318,15 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {[
-                  { dept: 'Computer Science', count: 85, score: 76.4, att: 81.2, highRisk: 6 },
-                  { dept: 'Data Science', count: 72, score: 78.1, att: 83.5, highRisk: 4 },
-                  { dept: 'Information Technology', count: 68, score: 71.9, att: 76.8, highRisk: 11 },
-                  { dept: 'Electrical Engineering', count: 75, score: 70.2, att: 75.1, highRisk: 14 },
-                  { dept: 'Mechanical Engineering', count: 80, score: 68.8, att: 73.4, highRisk: 18 },
-                  { dept: 'Business Analytics', count: 70, score: 74.5, att: 79.6, highRisk: 8 },
-                ].map((d, i) => (
+                {(summary?.departmentBreakdown || []).map((d, i) => (
                   <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-slate-900">{d.dept}</td>
-                    <td className="py-2.5 px-3">{d.count}</td>
-                    <td className="py-2.5 px-3 font-semibold text-slate-900">{d.score}</td>
-                    <td className="py-2.5 px-3">{d.att}%</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-900">{d.department}</td>
+                    <td className="py-2.5 px-3">{d.studentCount}</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-900">{d.avgScore}</td>
+                    <td className="py-2.5 px-3">{d.avgAttendance ?? 78.0}%</td>
                     <td className="py-2.5 px-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                        {d.highRisk}
+                        {d.highRiskCount}
                       </span>
                     </td>
                   </tr>
@@ -348,7 +375,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   <th className="py-2.5 px-3">Attendance</th>
                   <th className="py-2.5 px-3">Projected Score</th>
                   <th className="py-2.5 px-3">Risk Level</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
+                  <th className="py-2.5 px-3 text-right">Actions & Delete</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -371,13 +398,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                       <RiskBadge level={st.currentRiskLevel} size="sm" />
                     </td>
                     <td className="py-2.5 px-3 text-right">
-                      <button
-                        onClick={() => onSelectStudent(st.id)}
-                        className="px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center gap-1"
-                      >
-                        <span>Deep Dive & XAI</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => onSelectStudent(st.id)}
+                          className="px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Deep Dive & XAI</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteWatchlistStudent(st.id)}
+                          title="Delete Student Record"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -386,12 +422,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           </div>
         </div>
 
-        {/* Recent Interventions Log */}
+        {/* Recent Interventions Log with Delete */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-900">Recent Interventions Log</h2>
-              <span className="text-xs text-blue-600 font-medium">Active Follow-ups</span>
+              {recentInterventions.length > 0 && (
+                <button
+                  onClick={handleClearAllInterventions}
+                  className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear All
+                </button>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -404,9 +448,18 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   <div key={intv.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/60 text-xs">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-slate-900">{intv.studentName}</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                        {intv.status}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                          {intv.status}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteIntervention(intv.id)}
+                          title="Delete Intervention"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-[11px] font-medium text-slate-600">{intv.interventionType}</p>
                     <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 italic">
@@ -425,7 +478,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           <div className="mt-4 pt-3 border-t border-slate-100">
             <button
               onClick={onNavigateToDirectory}
-              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
             >
               <span>Explore All Student Records</span>
               <ArrowRight className="w-3.5 h-3.5" />

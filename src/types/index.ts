@@ -164,11 +164,21 @@ export interface DashboardSummary {
     department: string;
     studentCount: number;
     avgScore: number;
+    avgAttendance?: number;
     highRiskCount: number;
   }[];
   recentPredictions: PredictionResult[];
   recentInterventions: Intervention[];
   watchlistStudents: Student[];
+}
+
+export interface AiStudentBrief {
+  executiveSummary: string;
+  academicStrengths: string[];
+  riskFactors: string[];
+  aiAdvisorRecommendation: string;
+  explainabilityVerdict: string;
+  generatedBy: string;
 }
 
 export interface NotificationItem {
